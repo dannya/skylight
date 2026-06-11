@@ -223,12 +223,40 @@ describe("sigma-delta dither", () => {
   });
 
   it("bounds the detrended position ripple at the worst speed-step gap", () => {
-    // Wanted 9 °/s sits mid-gap between 3.6 and 14.8 — the hardest case, and
-    // the slow-pan rate band where wobble was reported. The 60 ms dwell keeps
-    // the oscillation under ~0.5° (the old 260 ms dwell gave ~1.5°).
+    // Wanted 9 °/s sits mid-gap between 3.6 and 14.8 — the hardest case.
+    // The ripple bound tracks DITHER_RIPPLE_DEG (0.5° budget + dwell
+    // overshoot); the crop-follow layer absorbs this digitally. The budget
+    // deliberately trades ripple for fewer speed flips — each flip is a
+    // sharp velocity step on this motor (no soft ramp).
     const { ripple, flips } = run(9, 10);
-    expect(ripple).toBeLessThan(0.6);
+    expect(ripple).toBeLessThan(1.1);
     expect(flips).toBeGreaterThan(4); // it must actually dither
+  });
+
+  it("plane-band rates burst far less often under the bigger ripple budget", () => {
+    // 2.5 °/s between the real 1.47/7.9 gears: the 0.2° budget burst ~3×/s
+    // (visible micro-ticks); 0.5° should cut state flips well below that.
+    const REAL_LOW: [number, number][] = [[0, 1.47], [1, 7.9]];
+    const cam = makeCam() as unknown as {
+      pickDithered(
+        st: { onHi: boolean; since: number; acc: number; lastAt: number },
+        table: [number, number][],
+        want: number,
+        now: number,
+      ): number;
+    };
+    const st = { onHi: false, since: 0, acc: 0, lastAt: 0 };
+    const dt = 1000 / 15;
+    let flips = 0;
+    let prev: number | null = null;
+    const n = Math.round(10_000 / dt);
+    for (let i = 0; i < n; i++) {
+      const step = cam.pickDithered(st, REAL_LOW, 2.5, 1_000_000 + i * dt);
+      if (prev !== null && step !== prev) flips++;
+      prev = step;
+    }
+    expect(flips / 10).toBeLessThan(3); // state changes per second
+    expect(flips).toBeGreaterThan(2); // still dithering, not stuck
   });
 
   it("holds a single step when the want sits on it", () => {

@@ -286,17 +286,19 @@ export class ViscaCamera implements CameraDriver {
     this.wantedMatched = speeds != null;
   }
 
-  /** Max position ripple budget contributed by rate dithering, deg. */
-  private static readonly DITHER_RIPPLE_DEG = 0.2;
-  /** Minimum dwell per discrete speed state, ms. Rates between table entries
-   *  must dither — and the detrended position ripple is ≈ rate-error × dwell.
-   *  The earlier "quiet" 260 ms dwell drifted ±1.5°, the wobble seen on slow
-   *  pan tracking; 60 ms cuts that ~4× to ±0.4° (≈6–15 speed flips/s — a soft
-   *  hum, not the old lockstep grind). Smoothness wins over silence here.
-   *  With byte 0x00 in the pan table the worst low-end gap shrank from
-   *  stop↔7.9 to 1.47↔7.9 °/s, so plane-band rates (1-3 °/s) now ride mostly
-   *  on the slow gear with brief byte-1 nudges — and the motor never fully
-   *  stops mid-pass. */
+  /** Max position ripple budget contributed by rate dithering, deg.
+   *
+   *  Tuning history: 0.2° with a 60 ms dwell flipped speed states 6-15×/s —
+   *  tolerable when each flip was small, but with the corrected tables a
+   *  plane-band rate (2-3 °/s) dithers across the 1.47↔7.9 °/s gear gap and
+   *  every flip is a sharp velocity step (the motor has no soft ramp —
+   *  measured), so ~3 catch-up bursts per second read as visible micro-ticks.
+   *  0.5° trades that for fewer, longer states (~1 burst/s): more positional
+   *  ripple, which the TV's crop-follow prediction absorbs digitally — that
+   *  is exactly the division of labor it was built for. */
+  private static readonly DITHER_RIPPLE_DEG = 0.5;
+  /** Minimum dwell per discrete speed state, ms. The ripple budget above is
+   *  the flip-rate lever; this only stops degenerate chatter. */
   private static readonly DITHER_MIN_DWELL_MS = 60;
 
   /** Per-axis sigma-delta dither state. */
