@@ -15,6 +15,7 @@ import { Hub } from "./hub.js";
 import { TleStore } from "./tle.js";
 import { resolveLocation } from "./geocode.js";
 import { buildHostMatcher, originHostname } from "./allowed-hosts.js";
+import { SfoGroundPoller } from "./sfo-ground.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, "../data");
@@ -96,6 +97,7 @@ async function main(): Promise<void> {
     store,
     getSnapshot: () => poller.getSnapshot(),
     getStatus: () => poller.getStatus(),
+    getSfoGround: () => sfoGround.getSnapshot(),
     isOriginAllowed: (origin) => {
       // No Origin header: not a browser (curl/scripts). Allow — the WS
       // hijack risk is browser-only.
@@ -116,6 +118,12 @@ async function main(): Promise<void> {
     onSnapshot: (now, aircraft) => hub.broadcastAircraft(now, aircraft),
     onStatus: (status) => hub.broadcastStatus(status),
   });
+
+  // SFO surface traffic (airplanes.live) — the "who's next" panel on the TV
+  // and Twitch stream. Local receiver can't hear ground targets at 13 mi.
+  const sfoGround = new SfoGroundPoller((at, aircraft) =>
+    hub.broadcastSfoGround(at, aircraft),
+  );
 
   // --- REST API (handy for debugging + non-WS clients) ---
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
@@ -171,6 +179,7 @@ async function main(): Promise<void> {
   }
 
   poller.start();
+  sfoGround.start();
 
   server.listen(PORT, HOST, () => {
     console.log(`[server] listening on http://${HOST}:${PORT}`);

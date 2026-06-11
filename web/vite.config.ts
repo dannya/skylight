@@ -33,6 +33,7 @@ export default defineConfig({
         control: resolve(__dirname, "control.html"),
         tracker: resolve(__dirname, "tracker.html"),
         tv: resolve(__dirname, "tv.html"),
+        stream: resolve(__dirname, "stream.html"),
       },
     },
   },
