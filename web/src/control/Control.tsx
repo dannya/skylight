@@ -399,6 +399,15 @@ export function Control() {
               ))}
             </div>
 
+            <Row label="Departing / Arriving display">
+              <Segmented value={cfg.locationDisplay}
+                options={[
+                  { value: "name", label: "Name" },
+                  { value: "iata", label: "IATA" },
+                ]}
+                onChange={(v) => set({ locationDisplay: v })} />
+            </Row>
+
             <h3 className="plane-preview-title">Preview</h3>
             <div className="plane-preview-card">
               {
