@@ -25,7 +25,7 @@ const FIELD_LABELS: Record<keyof ShowFields, string> = {
   altitude: "Altitude",
   speed: "Speed",
   verticalRate: "Vert. rate",
-  destination: "Destination",
+  destination: "Departing / Arriving",
   registration: "Registration",
 };
 
