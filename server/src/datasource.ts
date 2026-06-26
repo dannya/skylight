@@ -4,6 +4,7 @@
 
 import type { Aircraft, Config, DataSource } from "@shared/index.js";
 import type { SourceStatus } from "@shared/index.js";
+import { llToMeters, metersToMiles, rangeMeters } from "@shared/index.js";
 import { lookupAirline, lookupType } from "./enrich/tables.js";
 import type { RouteEnricher } from "./enrich/routes.js";
 
@@ -222,7 +223,11 @@ export class Poller {
         const ac = normalize(raw, now);
         if (ac) list.push(ac);
       }
-      return list;
+      // Area APIs sometimes return a far wider box than the radius we asked
+      // for, so a 3-mile setup ends up showing flights across the country.
+      // Trim to the configured radius ourselves (matching the renderer's
+      // radiusMiles * 1.08 cutoff). The radio feed is already local-only.
+      return source === "api" ? this.withinRadius(list) : list;
     } catch (e) {
       const reason = describeFetchError(e);
       if (source === "api" && reason === "HTTP 429") {
@@ -247,6 +252,18 @@ export class Poller {
     if (Date.now() < this.apiBackoffUntil) return;
     const list = await this.fetchList("api", Date.now());
     if (list) this.lastApi = list;
+  }
+
+  /** Keep only aircraft within the configured display radius. Position-less
+   *  records are kept — they're extrapolated from the last known fix client-side. */
+  private withinRadius(list: Aircraft[]): Aircraft[] {
+    const c = this.o.getConfig();
+    const maxMi = c.radiusMiles * 1.08;
+    return list.filter((ac) => {
+      if (ac.lat == null || ac.lon == null) return true;
+      const mi = metersToMiles(rangeMeters(llToMeters(ac.lat, ac.lon, c.centerLat, c.centerLon)));
+      return mi <= maxMi;
+    });
   }
 
   private buildApiUrl(): string {
