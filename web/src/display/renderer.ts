@@ -30,7 +30,11 @@ import {
   projectSkyPoint,
   skyGlyphScale,
   lerpAzimuth,
+  DEG,
   EMERGENCY_SQUAWKS,
+  FT_TO_M,
+  KM_TO_M,
+  MI_TO_M,
   type Aircraft,
   type Config,
   type GroundSample,
@@ -581,7 +585,7 @@ export class Renderer {
         const a = this.toScreen(r.le, cfg, proj);
         const b = this.toScreen(r.he, cfg, proj);
         // True runway width in px, nudged up a touch so it stays legible.
-        const wpx = Math.max(2.5, r.widthFt * 0.3048 * proj.pxPerM * 1.4);
+        const wpx = Math.max(2.5, r.widthFt * FT_TO_M * proj.pxPerM * 1.4);
 
         ctx.save();
         ctx.lineCap = "butt";
@@ -1161,8 +1165,6 @@ function hexSeed(hex: string): number {
   for (let i = 0; i < hex.length; i++) n = (n * 31 + hex.charCodeAt(i)) % 360;
   return (n / 360) * Math.PI * 2;
 }
-
-const DEG = Math.PI / 180;
 
 /** Initial great-circle bearing (deg from North) from point 1 to point 2. */
 function bearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
